@@ -31,6 +31,21 @@ interface TaskOutput {
 }
 
 export class TaskListManager {
+  /**
+   * 格式化时间戳为可读格式
+   */
+  private static formatTimestamp(date: Date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+    
+    return `[${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}Z]`;
+  }
+
   private static readonly ANALYSIS_TASKS: AnalysisTask[] = [
     {
       id: 'overview',
@@ -211,25 +226,25 @@ ${fullPrompt}
     // 创建进度回调
     const progressCallback = {
       onThinkingStart: (sessionId: string) => {
-        console.log(`🧠 [${new Date().toLocaleTimeString()}] Claude开始思考 (会话: ${sessionId.substring(0, 8)}...)`);
+        console.log(`🧠 ${TaskListManager.formatTimestamp()} Claude开始思考 (会话: ${sessionId.substring(0, 8)}...)`);
       },
       onThinkingProgress: (_content: string, totalLength: number) => {
         // 每500字符输出一次思考进展
         if (totalLength > 0 && totalLength % 500 === 0) {
-          console.log(`💭 [${new Date().toLocaleTimeString()}] 思考进展: ${totalLength} 字符`);
+          console.log(`💭 ${TaskListManager.formatTimestamp()} 思考进展: ${totalLength} 字符`);
         }
       },
       onToolExecution: (toolName: string, _toolUseId: string) => {
-        console.log(`🔧 [${new Date().toLocaleTimeString()}] 执行工具: ${toolName}`);
+        console.log(`🔧 ${TaskListManager.formatTimestamp()} 执行工具: ${toolName}`);
       },
       onContentUpdate: (_partialContent: string, totalLength: number) => {
         // 每1000字符输出一次进度
         if (totalLength > 0 && totalLength % 1000 === 0) {
-          console.log(`📝 [${new Date().toLocaleTimeString()}] 内容更新: ${totalLength} 字符`);
+          console.log(`📝 ${TaskListManager.formatTimestamp()} 内容更新: ${totalLength} 字符`);
         }
       },
       onStatusUpdate: (status: string, details?: any) => {
-        console.log(`📊 [${new Date().toLocaleTimeString()}] 状态: ${status}`, details ? `(${JSON.stringify(details)})` : '');
+        console.log(`📊 ${TaskListManager.formatTimestamp()} 状态: ${status}`, details ? `(${JSON.stringify(details)})` : '');
       }
     };
     
@@ -300,7 +315,7 @@ ${fullPrompt}
    * 格式化文档输出
    */
   private formatDocument(content: string, task: AnalysisTask, projectName: string): string {
-    const timestamp = new Date().toISOString();
+    const timestamp = TaskListManager.formatTimestamp();
 
     return `# ${task.name} - ${projectName}
 
@@ -343,7 +358,7 @@ ${content}
         totalTasks: TaskListManager.ANALYSIS_TASKS.length,
         successfulTasks: results.length,
         averageExecutionTime: 0,
-        timestamp: new Date().toISOString()
+        timestamp: TaskListManager.formatTimestamp()
       }
     };
   }
@@ -432,7 +447,7 @@ ${content}
         analysisDepth: config.depth,
         includeTests: config.includeTests
       },
-      generatedAt: new Date().toISOString(),
+      generatedAt: TaskListManager.formatTimestamp(),
       analysisConfig: config,
       contentIndex: {
         overview: './docs/overview.md',

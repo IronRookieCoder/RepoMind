@@ -71,7 +71,7 @@ export class SDKHelper {
     for (let attempt = 1; attempt <= mergedConfig.retryAttempts; attempt++) {
       try {
         if (mergedConfig.enableDetailedLogging) {
-          console.log(`🔄 [${new Date().toISOString()}] 执行Claude分析 (尝试 ${attempt}/${mergedConfig.retryAttempts})`);
+          console.log(`🔄 ${this.formatTimestamp()} 执行Claude分析 (尝试 ${attempt}/${mergedConfig.retryAttempts})`);
         } else {
           console.log(`🔄 执行Claude分析 (尝试 ${attempt}/${mergedConfig.retryAttempts})`);
         }
@@ -271,7 +271,7 @@ export class SDKHelper {
           if (message.session_id && message.session_id !== currentSessionId) {
             currentSessionId = message.session_id;
             if (enableDetailedLogging) {
-              console.log(`🔗 [${new Date().toISOString()}] 会话ID: ${currentSessionId}`);
+              console.log(`🔗 ${this.formatTimestamp()} 会话ID: ${currentSessionId}`);
             }
           }
           
@@ -280,7 +280,7 @@ export class SDKHelper {
             isThinking = true;
             progressCallback?.onThinkingStart?.(currentSessionId);
             if (enableDetailedLogging) {
-              console.log(`🧠 [${new Date().toISOString()}] 开始思考...`);
+              console.log(`🧠 ${this.formatTimestamp()} 开始思考...`);
             }
           }
           
@@ -290,7 +290,7 @@ export class SDKHelper {
             const toolUseId = event.content_block?.id || message.parent_tool_use_id || 'unknown';
             progressCallback?.onToolExecution?.(toolName, toolUseId);
             if (enableDetailedLogging) {
-              console.log(`🔧 [${new Date().toISOString()}] 执行工具: ${toolName} (ID: ${toolUseId})`);
+              console.log(`🔧 ${this.formatTimestamp()} 执行工具: ${toolName} (ID: ${toolUseId})`);
             }
           }
           
@@ -304,7 +304,7 @@ export class SDKHelper {
               progressCallback?.onThinkingProgress?.(deltaText, partialContent.length);
               if (enableDetailedLogging && deltaText.trim()) {
                 thinkingBuffer = this.processThinkingFragment(deltaText, thinkingBuffer, (completeThought: string) => {
-                  console.log(`💭 [${new Date().toISOString()}] 思考内容: ${completeThought}`);
+                  console.log(`💭 ${this.formatTimestamp()} 思考内容: ${completeThought}`);
                 });
               }
             }
@@ -324,11 +324,11 @@ export class SDKHelper {
               isThinking = false;
               // 输出剩余的思考内容
               if (enableDetailedLogging && thinkingBuffer.trim()) {
-                console.log(`💭 [${new Date().toISOString()}] 思考内容: ${thinkingBuffer.trim()}`);
+                console.log(`💭 ${this.formatTimestamp()} 思考内容: ${thinkingBuffer.trim()}`);
                 thinkingBuffer = '';
               }
               if (enableDetailedLogging) {
-                console.log(`🧠 [${new Date().toISOString()}] 思考完成，内容长度: ${partialContent.length}`);
+                console.log(`🧠 ${this.formatTimestamp()} 思考完成，内容长度: ${partialContent.length}`);
               }
             }
           }
@@ -473,6 +473,21 @@ ${originalPrompt}
       references: [],
       metadata: {}
     };
+  }
+
+  /**
+   * 格式化时间戳为可读格式
+   */
+  private static formatTimestamp(date: Date = new Date()): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    const milliseconds = String(date.getMilliseconds()).padStart(3, '0');
+    
+    return `[${year}-${month}-${day}T${hours}:${minutes}:${seconds}.${milliseconds}Z]`;
   }
 
   /**
