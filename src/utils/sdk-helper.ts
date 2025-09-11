@@ -258,6 +258,7 @@ export class SDKHelper {
     let lastValidContent = '';
     let isThinking = false;
     let currentSessionId = '';
+    let thinkingBuffer = ''; // 缓冲区用于累积完整句子
     
     try {
       for await (const message of query({
@@ -304,7 +305,9 @@ export class SDKHelper {
             if (isThinking) {
               progressCallback?.onThinkingProgress?.(deltaText, partialContent.length);
               if (enableDetailedLogging && deltaText.trim()) {
-                console.log(`💭 [${new Date().toISOString()}] 思考片段: ${deltaText.substring(0, 50)}${deltaText.length > 50 ? '...' : ''}`);
+                thinkingBuffer = this.processThinkingFragment(deltaText, thinkingBuffer, (completeThought: string) => {
+                  console.log(`💭 [${new Date().toISOString()}] 思考内容: ${completeThought}`);
+                });
               }
             }
             
@@ -321,6 +324,11 @@ export class SDKHelper {
           if (event.type === 'content_block_stop') {
             if (isThinking) {
               isThinking = false;
+              // 输出剩余的思考内容
+              if (enableDetailedLogging && thinkingBuffer.trim()) {
+                console.log(`💭 [${new Date().toISOString()}] 思考内容: ${thinkingBuffer.trim()}`);
+                thinkingBuffer = '';
+              }
               if (enableDetailedLogging) {
                 console.log(`🧠 [${new Date().toISOString()}] 思考完成，内容长度: ${partialContent.length}`);
               }
@@ -467,5 +475,74 @@ ${originalPrompt}
       references: [],
       metadata: {}
     };
+  }
+
+  /**
+   * 处理思考片段，累积完整句子后输出
+   */
+  private static processThinkingFragment(
+    deltaText: string, 
+    buffer: string, 
+    outputCallback: (completeThought: string) => void
+  ): string {
+    // 将新片段添加到缓冲区
+    buffer += deltaText;
+    
+    // 定义句子结束标志
+    const sentenceEnders = /[。！？；：\n]|\.(?:\s|$)|!(?:\s|$)|\?(?:\s|$)|;(?:\s|$)|:(?:\s|$)/g;
+    
+    let lastEndIndex = -1;
+    let match;
+    
+    // 查找所有句子结束位置
+    while ((match = sentenceEnders.exec(buffer)) !== null) {
+      lastEndIndex = match.index + match[0].length;
+    }
+    
+    // 如果找到完整句子，输出并清理缓冲区
+    if (lastEndIndex > -1) {
+      const completeThought = buffer.substring(0, lastEndIndex).trim();
+      if (completeThought) {
+        // 限制单次输出长度，避免过长的日志行
+        const maxLength = 200;
+        if (completeThought.length <= maxLength) {
+          outputCallback(completeThought);
+        } else {
+          // 如果太长，按句子分割输出
+          const sentences = completeThought.split(/([。！？；：])/);
+          let currentSentence = '';
+          
+          for (let i = 0; i < sentences.length; i++) {
+            currentSentence += sentences[i];
+            
+            // 如果是标点符号或达到长度限制，输出当前句子
+            if (i % 2 === 1 || currentSentence.length > maxLength) {
+              if (currentSentence.trim()) {
+                outputCallback(currentSentence.trim());
+                currentSentence = '';
+              }
+            }
+          }
+          
+          // 输出剩余内容
+          if (currentSentence.trim()) {
+            outputCallback(currentSentence.trim());
+          }
+        }
+      }
+      
+      // 保留未完成的部分
+      buffer = buffer.substring(lastEndIndex);
+    }
+    // 如果缓冲区太长（超过500字符），强制输出并清空
+    else if (buffer.length > 500) {
+      const trimmedBuffer = buffer.trim();
+      if (trimmedBuffer) {
+        outputCallback(trimmedBuffer);
+      }
+      buffer = '';
+    }
+    
+    return buffer;
   }
 }
