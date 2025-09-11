@@ -6,8 +6,9 @@
 // 导出核心类型
 export * from './types';
 
-// 导出Agent调度器
+// 导出Agent调度器和任务清单管理器
 export { AgentScheduler } from './agents/scheduler/AgentScheduler';
+export { TaskListManager } from './agents/TaskListManager';
 
 // 导出所有分析Agent
 export { BaseAnalysisAgent } from './agents/base/BaseAnalysisAgent';

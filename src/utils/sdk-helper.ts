@@ -16,7 +16,7 @@ interface QueryOptions {
 }
 
 export interface SDKConfig {
-  maxTurns?: number;
+  maxTurns?: number | undefined; // undefined表示不限制轮次
   timeout?: number;
   retryAttempts?: number;
   retryDelay?: number;
@@ -42,7 +42,15 @@ export class SDKHelper {
     systemPrompt: string,
     config?: SDKConfig
   ): Promise<string> {
-    const mergedConfig = { ...this.DEFAULT_CONFIG, ...config };
+    // 只对未明确设置的配置项使用默认值，保持调用者的意图
+    const mergedConfig = {
+      maxTurns: config && 'maxTurns' in config ? config.maxTurns : this.DEFAULT_CONFIG.maxTurns,
+      timeout: config?.timeout ?? this.DEFAULT_CONFIG.timeout,
+      retryAttempts: config?.retryAttempts ?? this.DEFAULT_CONFIG.retryAttempts,
+      retryDelay: config?.retryDelay ?? this.DEFAULT_CONFIG.retryDelay,
+      enablePartialResults: config?.enablePartialResults ?? this.DEFAULT_CONFIG.enablePartialResults,
+      fallbackToSimplerPrompt: config?.fallbackToSimplerPrompt ?? this.DEFAULT_CONFIG.fallbackToSimplerPrompt
+    };
     
     for (let attempt = 1; attempt <= mergedConfig.retryAttempts; attempt++) {
       try {
@@ -73,10 +81,21 @@ export class SDKHelper {
           console.log(`🔄 检测到限制错误，尝试降级分析策略... (错误: ${errorMessage})`);
           try {
             const simplifiedPrompt = this.createSimplifiedPrompt(prompt);
+            // 如果是超时错误，适当延长超时时间；如果是maxTurns错误，保持原timeout
+            const isTimeoutError = errorMessage.includes('超时') || 
+                                 errorMessage.includes('AbortError') ||
+                                 errorMessage.includes('Claude Code process aborted');
+            
             const simplifiedConfig = {
               ...mergedConfig,
-              maxTurns: Math.max(10, mergedConfig.maxTurns * 2), // 增加maxTurns而不是减少
-              timeout: Math.max(120000, mergedConfig.timeout), // 保持或增加timeout
+              // 只有在原本有maxTurns限制时才进行降级
+              maxTurns: mergedConfig.maxTurns !== undefined 
+                ? Math.max(15, Math.floor(mergedConfig.maxTurns * 0.6))
+                : undefined,
+              // 如果是超时错误，延长50%时间；否则保持原timeout
+              timeout: isTimeoutError 
+                ? Math.min(mergedConfig.timeout * 1.5, 900000) // 最多15分钟
+                : mergedConfig.timeout,
               retryAttempts: 1, // 降级时只尝试一次
               fallbackToSimplerPrompt: false, // 避免无限递归降级
               enablePartialResults: false // 降级时不启用部分结果，以便失败时能正确抛出错误
@@ -130,7 +149,7 @@ export class SDKHelper {
   private static async performPartialQuery(
     prompt: string, 
     systemPrompt: string,
-    config: Required<SDKConfig>
+    config: SDKConfig & { timeout: number; retryAttempts: number; retryDelay: number; enablePartialResults: boolean; fallbackToSimplerPrompt: boolean }
   ): Promise<string> {
     // 创建AbortController用于超时控制
     const abortController = new AbortController();
@@ -139,7 +158,7 @@ export class SDKHelper {
     }, config.timeout);
     
     const queryOptions: QueryOptions = {
-      maxTurns: config.maxTurns,
+      ...(config.maxTurns !== undefined && { maxTurns: config.maxTurns }), // 只有明确设置时才包含maxTurns
       allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'Task', 'ExitPlanMode', 'TodoWrite', 'WebFetch', 'WebSearch', 'BashOutput', 'KillBash'],
       customSystemPrompt: systemPrompt,
       includePartialMessages: config.enablePartialResults,
@@ -163,7 +182,7 @@ export class SDKHelper {
   private static async performQuery(
     prompt: string, 
     systemPrompt: string,
-    config: Required<SDKConfig>
+    config: SDKConfig & { timeout: number; retryAttempts: number; retryDelay: number; enablePartialResults: boolean; fallbackToSimplerPrompt: boolean }
   ): Promise<string> {
     // 创建AbortController用于超时控制
     const abortController = new AbortController();
@@ -172,7 +191,7 @@ export class SDKHelper {
     }, config.timeout);
     
     const queryOptions: QueryOptions = {
-      maxTurns: config.maxTurns,
+      ...(config.maxTurns !== undefined && { maxTurns: config.maxTurns }), // 只有明确设置时才包含maxTurns
       allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'Task', 'ExitPlanMode', 'TodoWrite', 'WebFetch', 'WebSearch', 'BashOutput', 'KillBash'],
       customSystemPrompt: systemPrompt,
       includePartialMessages: config.enablePartialResults,
