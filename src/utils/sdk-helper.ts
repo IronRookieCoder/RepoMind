@@ -9,10 +9,20 @@ import yaml from 'js-yaml';
 interface QueryOptions {
   maxTurns?: number;
   allowedTools?: string[];
+  disallowedTools?: string[];
   customSystemPrompt?: string;
   includePartialMessages?: boolean; // 启用部分消息流
   abortController?: AbortController; // 超时控制
   isFallbackQuery?: boolean; // 标记是否为降级查询
+}
+
+// 进度回调接口
+export interface ProgressCallback {
+  onThinkingStart?: (sessionId: string) => void;
+  onThinkingProgress?: (content: string, totalLength: number) => void;
+  onToolExecution?: (toolName: string, toolUseId: string) => void;
+  onContentUpdate?: (partialContent: string, totalLength: number) => void;
+  onStatusUpdate?: (status: string, details?: any) => void;
 }
 
 export interface SDKConfig {
@@ -22,16 +32,19 @@ export interface SDKConfig {
   retryDelay?: number;
   enablePartialResults?: boolean; // 启用部分结果收集
   fallbackToSimplerPrompt?: boolean; // 失败时降级为简化prompt
+  progressCallback?: ProgressCallback; // 进度回调
+  enableDetailedLogging?: boolean; // 启用详细日志
 }
 
 export class SDKHelper {
-  private static readonly DEFAULT_CONFIG: Required<SDKConfig> = {
-    maxTurns: 20,
+  private static readonly DEFAULT_CONFIG: Required<Omit<SDKConfig, 'progressCallback'>> & { progressCallback?: ProgressCallback } = {
+    maxTurns: undefined, // 注释掉轮次限制，让Claude Code有足够空间完成复杂分析
     timeout: 300000, // 5分钟
     retryAttempts: 3,
     retryDelay: 1000, // 1秒
     enablePartialResults: true,
-    fallbackToSimplerPrompt: true
+    fallbackToSimplerPrompt: true,
+    enableDetailedLogging: true // 默认启用详细日志，便于调试
   };
 
   /**
@@ -44,19 +57,31 @@ export class SDKHelper {
   ): Promise<string> {
     // 只对未明确设置的配置项使用默认值，保持调用者的意图
     const mergedConfig = {
-      maxTurns: config && 'maxTurns' in config ? config.maxTurns : this.DEFAULT_CONFIG.maxTurns,
+      // 只有在config中明确设置了maxTurns且不为undefined时才使用，否则使用默认值
+      maxTurns: config && 'maxTurns' in config && config.maxTurns !== undefined ? config.maxTurns : this.DEFAULT_CONFIG.maxTurns,
       timeout: config?.timeout ?? this.DEFAULT_CONFIG.timeout,
       retryAttempts: config?.retryAttempts ?? this.DEFAULT_CONFIG.retryAttempts,
       retryDelay: config?.retryDelay ?? this.DEFAULT_CONFIG.retryDelay,
       enablePartialResults: config?.enablePartialResults ?? this.DEFAULT_CONFIG.enablePartialResults,
-      fallbackToSimplerPrompt: config?.fallbackToSimplerPrompt ?? this.DEFAULT_CONFIG.fallbackToSimplerPrompt
+      fallbackToSimplerPrompt: config?.fallbackToSimplerPrompt ?? this.DEFAULT_CONFIG.fallbackToSimplerPrompt,
+      progressCallback: config?.progressCallback,
+      enableDetailedLogging: config?.enableDetailedLogging ?? this.DEFAULT_CONFIG.enableDetailedLogging
     };
     
     for (let attempt = 1; attempt <= mergedConfig.retryAttempts; attempt++) {
       try {
-        console.log(`🔄 执行Claude分析 (尝试 ${attempt}/${mergedConfig.retryAttempts})`);
+        if (mergedConfig.enableDetailedLogging) {
+          console.log(`🔄 [${new Date().toISOString()}] 执行Claude分析 (尝试 ${attempt}/${mergedConfig.retryAttempts})`);
+        } else {
+          console.log(`🔄 执行Claude分析 (尝试 ${attempt}/${mergedConfig.retryAttempts})`);
+        }
         
-        const result = await this.performQuery(prompt, systemPrompt, mergedConfig);
+        mergedConfig.progressCallback?.onStatusUpdate?.('executing', { attempt, maxAttempts: mergedConfig.retryAttempts });
+        
+        const result = await this.performQuery(prompt, systemPrompt, {
+          ...mergedConfig,
+          progressCallback: mergedConfig.progressCallback
+        } as any);
         
         if (result && result.length > 100) {
           console.log('✅ Claude分析成功完成');
@@ -101,7 +126,10 @@ export class SDKHelper {
               enablePartialResults: false // 降级时不启用部分结果，以便失败时能正确抛出错误
             };
             
-            const fallbackResult = await this.performQuery(simplifiedPrompt, systemPrompt, simplifiedConfig);
+            const fallbackResult = await this.performQuery(simplifiedPrompt, systemPrompt, {
+              ...simplifiedConfig,
+              progressCallback: simplifiedConfig.progressCallback
+            } as any);
             if (fallbackResult && fallbackResult.length > 50) {
               console.log('✅ 降级分析成功完成');
               return fallbackResult + '\n\n[注意：这是简化版分析结果]';
@@ -118,7 +146,10 @@ export class SDKHelper {
                   fallbackToSimplerPrompt: false // 避免无限递归
                 };
                 // 使用特殊的查询方法标记为降级查询
-                const partialResult = await this.performPartialQuery(prompt, systemPrompt, partialConfig);
+                const partialResult = await this.performPartialQuery(prompt, systemPrompt, {
+                  ...partialConfig,
+                  progressCallback: partialConfig.progressCallback
+                } as any);
                 if (partialResult && partialResult.length > 50) {
                   console.log('✅ 成功获取部分结果');
                   return partialResult + '\n\n[注意：分析未完全完成，这是部分结果]';
@@ -149,7 +180,7 @@ export class SDKHelper {
   private static async performPartialQuery(
     prompt: string, 
     systemPrompt: string,
-    config: SDKConfig & { timeout: number; retryAttempts: number; retryDelay: number; enablePartialResults: boolean; fallbackToSimplerPrompt: boolean }
+    config: SDKConfig & { timeout: number; retryAttempts: number; retryDelay: number; enablePartialResults: boolean; fallbackToSimplerPrompt: boolean; enableDetailedLogging: boolean; progressCallback?: ProgressCallback }
   ): Promise<string> {
     // 创建AbortController用于超时控制
     const abortController = new AbortController();
@@ -158,8 +189,13 @@ export class SDKHelper {
     }, config.timeout);
     
     const queryOptions: QueryOptions = {
-      ...(config.maxTurns !== undefined && { maxTurns: config.maxTurns }), // 只有明确设置时才包含maxTurns
-      allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'Task', 'ExitPlanMode', 'TodoWrite', 'WebFetch', 'WebSearch', 'BashOutput', 'KillBash'],
+      // 部分结果查询时也完全移除maxTurns限制
+      disallowedTools: [
+        // 禁止写入工具（知识库分析期间不应修改文件）
+        'Write', 'Edit', 'MultiEdit', 'NotebookEdit',
+        // 禁止联网工具（分析本地代码仓库）
+        'WebFetch', 'WebSearch'
+      ],
       customSystemPrompt: systemPrompt,
       includePartialMessages: config.enablePartialResults,
       abortController: abortController,
@@ -167,7 +203,7 @@ export class SDKHelper {
     };
 
     try {
-      const result = await this.runQuery(prompt, queryOptions);
+      const result = await this.runQuery(prompt, queryOptions, config.progressCallback, config.enableDetailedLogging);
       clearTimeout(timeoutId);
       return result;
     } catch (error) {
@@ -182,7 +218,7 @@ export class SDKHelper {
   private static async performQuery(
     prompt: string, 
     systemPrompt: string,
-    config: SDKConfig & { timeout: number; retryAttempts: number; retryDelay: number; enablePartialResults: boolean; fallbackToSimplerPrompt: boolean }
+    config: SDKConfig & { timeout: number; retryAttempts: number; retryDelay: number; enablePartialResults: boolean; fallbackToSimplerPrompt: boolean; enableDetailedLogging: boolean; progressCallback?: ProgressCallback }
   ): Promise<string> {
     // 创建AbortController用于超时控制
     const abortController = new AbortController();
@@ -191,8 +227,13 @@ export class SDKHelper {
     }, config.timeout);
     
     const queryOptions: QueryOptions = {
-      ...(config.maxTurns !== undefined && { maxTurns: config.maxTurns }), // 只有明确设置时才包含maxTurns
-      allowedTools: ['Read', 'Glob', 'Grep', 'Bash', 'Task', 'ExitPlanMode', 'TodoWrite', 'WebFetch', 'WebSearch', 'BashOutput', 'KillBash'],
+      // 完全移除maxTurns限制，让Claude Code自主决定所需轮次
+      disallowedTools: [
+        // 禁止写入工具（知识库分析期间不应修改文件）
+        'Write', 'Edit', 'MultiEdit', 'NotebookEdit',
+        // 禁止联网工具（分析本地代码仓库）
+        'WebFetch', 'WebSearch'
+      ],
       customSystemPrompt: systemPrompt,
       includePartialMessages: config.enablePartialResults,
       abortController: abortController,
@@ -200,7 +241,7 @@ export class SDKHelper {
     };
 
     try {
-      const result = await this.runQuery(prompt, queryOptions);
+      const result = await this.runQuery(prompt, queryOptions, config.progressCallback, config.enableDetailedLogging);
       clearTimeout(timeoutId);
       return result;
     } catch (error) {
@@ -210,26 +251,79 @@ export class SDKHelper {
   }
 
   /**
-   * 执行查询并处理流式响应，支持部分结果收集
+   * 执行查询并处理流式响应，支持部分结果收集和思考进度跟踪
    */
-  private static async runQuery(prompt: string, options: QueryOptions): Promise<string> {
+  private static async runQuery(prompt: string, options: QueryOptions, progressCallback?: ProgressCallback, enableDetailedLogging?: boolean): Promise<string> {
     let partialContent = '';
     let lastValidContent = '';
+    let isThinking = false;
+    let currentSessionId = '';
     
     try {
       for await (const message of query({
         prompt,
         options
       })) {
-        // 收集流式部分消息
+        // 处理流式事件
         if (message.type === 'stream_event') {
           const event = message.event;
-          // 检查是否为文本增量事件
+          
+          // 记录会话ID
+          if (message.session_id && message.session_id !== currentSessionId) {
+            currentSessionId = message.session_id;
+            if (enableDetailedLogging) {
+              console.log(`🔗 [${new Date().toISOString()}] 会话ID: ${currentSessionId}`);
+            }
+          }
+          
+          // 检查思考开始事件
+          if (event.type === 'content_block_start' && event.content_block?.type === 'text') {
+            isThinking = true;
+            progressCallback?.onThinkingStart?.(currentSessionId);
+            if (enableDetailedLogging) {
+              console.log(`🧠 [${new Date().toISOString()}] 开始思考...`);
+            }
+          }
+          
+          // 检查工具执行事件
+          if (event.type === 'tool_use_start' || (event.type === 'content_block_start' && event.content_block?.type === 'tool_use')) {
+            const toolName = event.content_block?.name || 'unknown';
+            const toolUseId = event.content_block?.id || message.parent_tool_use_id || 'unknown';
+            progressCallback?.onToolExecution?.(toolName, toolUseId);
+            if (enableDetailedLogging) {
+              console.log(`🔧 [${new Date().toISOString()}] 执行工具: ${toolName} (ID: ${toolUseId})`);
+            }
+          }
+          
+          // 检查文本增量事件
           if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            partialContent += event.delta.text;
-            // 如果内容看起来完整（超过一定长度），保存为最后有效内容
+            const deltaText = event.delta.text;
+            partialContent += deltaText;
+            
+            // 如果在思考过程中，触发思考进度回调
+            if (isThinking) {
+              progressCallback?.onThinkingProgress?.(deltaText, partialContent.length);
+              if (enableDetailedLogging && deltaText.trim()) {
+                console.log(`💭 [${new Date().toISOString()}] 思考片段: ${deltaText.substring(0, 50)}${deltaText.length > 50 ? '...' : ''}`);
+              }
+            }
+            
+            // 触发内容更新回调
+            progressCallback?.onContentUpdate?.(partialContent, partialContent.length);
+            
+            // 如果内容看起来完整，保存为最后有效内容
             if (partialContent.length > 200) {
               lastValidContent = partialContent;
+            }
+          }
+          
+          // 检查内容块结束事件
+          if (event.type === 'content_block_stop') {
+            if (isThinking) {
+              isThinking = false;
+              if (enableDetailedLogging) {
+                console.log(`🧠 [${new Date().toISOString()}] 思考完成，内容长度: ${partialContent.length}`);
+              }
             }
           }
         }

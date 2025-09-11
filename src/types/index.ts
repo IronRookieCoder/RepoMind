@@ -171,11 +171,9 @@ export interface KnowledgeIndex {
   analysisConfig: AnalysisConfig;
   contentIndex: {
     overview: string;
-    architecture: string;
-    components: string;
-    apis: string;
-    dataModels: string;
-    workflows: string;
+    systemArchitecture: string;
+    apiReference: string;
+    businessWorkflows: string;
   };
   metadata: Record<string, any>;
   qualityMetrics: {

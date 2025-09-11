@@ -34,50 +34,34 @@ export class TaskListManager {
   private static readonly ANALYSIS_TASKS: AnalysisTask[] = [
     {
       id: 'overview',
-      name: '项目概览分析',
+      name: '项目概览',
       promptFile: 'overview-analysis.md',
       outputFile: 'docs/overview.md',
       priority: 1,
       description: '分析项目整体特征，提供快速理解项目的概览信息'
     },
     {
-      id: 'architecture',
-      name: '系统架构分析',
-      promptFile: 'architecture-analysis.md',
-      outputFile: 'docs/architecture.md',
+      id: 'systemArchitecture',
+      name: '系统架构与组件设计',
+      promptFile: 'system-architecture-analysis.md',
+      outputFile: 'docs/system-architecture.md',
       priority: 2,
-      description: '分析项目的整体架构设计和核心模式'
+      description: '分析项目的整体架构设计、核心模式及组件结构'
     },
     {
-      id: 'components',
-      name: '组件设计分析',
-      promptFile: 'components-analysis.md',
-      outputFile: 'docs/components.md',
+      id: 'apiReference',
+      name: 'API接口与数据模型',
+      promptFile: 'api-reference-analysis.md',
+      outputFile: 'docs/api-reference.md',
       priority: 3,
-      description: '分析项目的组件结构和设计模式'
+      description: '分析项目的API设计、接口规范及数据结构模型'
     },
     {
-      id: 'apis',
-      name: 'API接口分析',
-      promptFile: 'apis-analysis.md',
-      outputFile: 'docs/apis.md',
+      id: 'businessWorkflows',
+      name: '业务流程',
+      promptFile: 'business-workflows-analysis.md',
+      outputFile: 'docs/business-workflows.md',
       priority: 4,
-      description: '分析项目的API设计和接口规范'
-    },
-    {
-      id: 'data-models',
-      name: '数据模型分析',
-      promptFile: 'data-models-analysis.md',
-      outputFile: 'docs/data-models.md',
-      priority: 4,
-      description: '分析项目的数据结构和模型设计'
-    },
-    {
-      id: 'workflows',
-      name: '业务流程分析',
-      promptFile: 'workflows-analysis.md',
-      outputFile: 'docs/workflows.md',
-      priority: 5,
       description: '分析项目的核心业务流程和处理逻辑'
     }
   ];
@@ -222,16 +206,44 @@ ${fullPrompt}
    */
   private async executeUnifiedAnalysis(prompt: string, _config: AnalysisConfig): Promise<string> {
     console.log('🔄 开始统一分析，预计需要较长时间...');
+    console.log('📈 启用详细日志和进度跟踪...');
+    
+    // 创建进度回调
+    const progressCallback = {
+      onThinkingStart: (sessionId: string) => {
+        console.log(`🧠 [${new Date().toLocaleTimeString()}] Claude开始思考 (会话: ${sessionId.substring(0, 8)}...)`);
+      },
+      onThinkingProgress: (_content: string, totalLength: number) => {
+        // 每500字符输出一次思考进展
+        if (totalLength > 0 && totalLength % 500 === 0) {
+          console.log(`💭 [${new Date().toLocaleTimeString()}] 思考进展: ${totalLength} 字符`);
+        }
+      },
+      onToolExecution: (toolName: string, _toolUseId: string) => {
+        console.log(`🔧 [${new Date().toLocaleTimeString()}] 执行工具: ${toolName}`);
+      },
+      onContentUpdate: (_partialContent: string, totalLength: number) => {
+        // 每1000字符输出一次进度
+        if (totalLength > 0 && totalLength % 1000 === 0) {
+          console.log(`📝 [${new Date().toLocaleTimeString()}] 内容更新: ${totalLength} 字符`);
+        }
+      },
+      onStatusUpdate: (status: string, details?: any) => {
+        console.log(`📊 [${new Date().toLocaleTimeString()}] 状态: ${status}`, details ? `(${JSON.stringify(details)})` : '');
+      }
+    };
     
     return await SDKHelper.executeAnalysis(
       prompt,
       '你是一个专业的代码仓库分析专家，擅长理解复杂的代码结构和业务逻辑。请按照指定的任务清单，对代码仓库进行全面深入的分析。',
       {
-        maxTurns: undefined, // 明确不限制轮次，让Claude Code有足够空间完成复杂的多任务分析
+        // 不设置maxTurns，使用SDK默认值，避免undefined导致的问题
         timeout: 600000, // 10分钟超时
         retryAttempts: 2,
         enablePartialResults: true,
-        fallbackToSimplerPrompt: true
+        fallbackToSimplerPrompt: true,
+        enableDetailedLogging: true,
+        progressCallback: progressCallback
       }
     );
   }
@@ -424,11 +436,9 @@ ${content}
       analysisConfig: config,
       contentIndex: {
         overview: './docs/overview.md',
-        architecture: './docs/architecture.md',
-        components: './docs/components.md',
-        apis: './docs/apis.md',
-        dataModels: './docs/data-models.md',
-        workflows: './docs/workflows.md'
+        systemArchitecture: './docs/system-architecture.md',
+        apiReference: './docs/api-reference.md',
+        businessWorkflows: './docs/business-workflows.md'
       },
       metadata: result.metadata,
       qualityMetrics: {

@@ -19,32 +19,43 @@ RepoMind是一个智能的单仓库知识库生成系统，通过深度分析代
 
 ```
 src/
-├── types/                  # 完整的类型定义系统
-│   └── index.ts           # 所有接口和类型定义
-├── agents/                # 专业分析Agent集群
-│   ├── base/              # 基础Agent抽象类
+├── types/                    # 核心类型定义系统
+│   └── index.ts             # 完整的接口和类型定义
+├── agents/                  # 智能分析Agent集群
+│   ├── base/                # Agent基础抽象层
 │   │   └── BaseAnalysisAgent.ts
-│   ├── scheduler/         # Agent调度系统
+│   ├── scheduler/           # Agent调度系统
 │   │   └── AgentScheduler.ts
+│   ├── TaskListManager.ts   # 核心任务管理器（统一调度）
 │   ├── OverviewAnalysisAgent.ts      # 项目概览分析
 │   ├── ArchitectureAnalysisAgent.ts  # 系统架构分析
 │   ├── ComponentAnalysisAgent.ts     # 组件设计分析
 │   ├── ApiAnalysisAgent.ts           # API接口分析
 │   ├── DataModelAnalysisAgent.ts     # 数据模型分析
-│   ├── WorkflowAnalysisAgent.ts      # 业务流程分析
-├── utils/                  # 工具函数库
-│   └── index.ts           # 文件操作、项目检测、性能监控等
-├── prompts/               # Prompt模板系统
-│   ├── index.md           # Prompt使用指南
-│   ├── overview-analysis.md
-│   ├── architecture-analysis.md
-│   ├── components-analysis.md
-│   ├── apis-analysis.md
-│   ├── data-models-analysis.md
-│   ├── workflows-analysis.md
-├── index.ts               # 主入口文件和API导出
-├── example.ts             # 详细使用示例
-└── cli.ts                 # 完整的CLI工具
+│   └── WorkflowAnalysisAgent.ts      # 业务流程分析
+├── utils/                   # 工具函数库
+│   ├── index.ts            # 文件操作、项目检测、YAML处理等
+│   └── sdk-helper.ts       # Claude Code SDK辅助工具
+├── prompts/                 # 专业化Prompt模板系统
+│   ├── index.md            # Prompt使用指南
+│   ├── common-analysis-guide.md       # 通用分析指南
+│   ├── overview-analysis.md           # 概览分析模板
+│   ├── architecture-analysis.md       # 架构分析模板
+│   ├── system-architecture-analysis.md # 系统架构专项模板
+│   ├── components-analysis.md         # 组件分析模板
+│   ├── apis-analysis.md              # API分析模板
+│   ├── api-reference-analysis.md     # API参考文档模板
+│   ├── data-models-analysis.md       # 数据模型分析模板
+│   ├── workflows-analysis.md         # 工作流分析模板
+│   ├── business-workflows-analysis.md # 业务流程专项模板
+│   ├── dependencies-analysis.md      # 依赖分析模板
+│   └── unified-analysis-tasks.md     # 统一分析任务模板
+├── standard/                # 知识库规范文档
+│   └── single-repo-knowledge-spec.md # 单仓库知识库标准规范
+├── bin/                     # 可执行文件
+│   └── cli.ts              # CLI主程序（package.json中的bin入口）
+├── index.ts                 # 主入口文件和API导出
+└── cli.ts                   # CLI工具兼容入口
 ```
 
 ## 安装和使用
@@ -149,9 +160,14 @@ console.log(`整体置信度: ${(result.overallConfidence * 100).toFixed(1)}%`);
 
 ## 系统架构
 
-### Agent集群
-RepoMind采用多Agent协作架构，每个Agent专注于特定的分析任务：
+RepoMind采用统一任务管理的智能架构，基于TaskListManager实现高效的知识库生成：
 
+#### 核心组件：
+1. **TaskListManager** - 核心任务管理器，统一调度所有分析任务
+2. **AgentScheduler** - Agent调度器，负责任务分发和结果聚合  
+3. **6个专业分析Agent** - 分别负责不同维度的代码分析
+
+#### Agent集群：
 1. **概览分析Agent** - 项目整体分析和核心概念提取
 2. **架构分析Agent** - 系统架构模式识别和分层分析  
 3. **组件分析Agent** - 组件识别、职责分析和依赖关系
@@ -163,37 +179,50 @@ RepoMind采用多Agent协作架构，每个Agent专注于特定的分析任务�
 
 ```mermaid
 flowchart TD
-    A[用户请求] --> B[Agent调度器]
-    B --> C[任务分解]
-    C --> D[依赖排序]
-    D --> E[并行执行Agent]
-    E --> F[结果聚合]
-    F --> G[质量检查]
-    G --> H[知识库更新]
-    H --> I[生成完成]
+    A[用户请求] --> B[AgentScheduler]
+    B --> C[TaskListManager核心调度]
+    C --> D[统一任务编排]
+    D --> E[Claude Code SDK调用]
+    E --> F[多维度分析处理]
+    F --> G[结果聚合和验证]
+    G --> H[知识库文件生成]
+    H --> I[质量评估报告]
+    I --> J[生成完成]
 ```
 
 ## 知识库输出结构
 
-生成的知识库完全符合单仓库知识库规范：
+生成的知识库完全符合单仓库知识库规范（基于src/standard/single-repo-knowledge-spec.md）：
 
 ```
 .repomind/
-├── knowledge.yaml             # 主索引文件（YAML格式）
+├── knowledge.yaml              # 结构化知识库主索引（YAML格式）
 ├── meta/                       # 元数据目录
-│   ├── repo-info.yaml         # 仓库基础信息
+│   ├── repo-info.yaml         # 仓库基础信息和技术栈
 │   ├── analysis-config.yaml   # 分析配置记录
-│   ├── generation-log.yaml    # 生成过程日志
-│   └── repo-relationships.yaml # 多仓库关联关系
+│   ├── generation-log.yaml    # 生成过程详细日志
+│   └── repo-relationships.yaml # 多仓库关联关系（预留）
 ├── docs/                       # 维基式文档目录
 │   ├── overview.md            # 项目概览文档
-│   ├── architecture.md        # 系统架构文档（内嵌mermaid图表）
+│   ├── architecture.md        # 系统架构文档（内嵌架构图表）
 │   ├── components.md          # 组件设计文档（内嵌组件关系图）
 │   ├── apis.md                # API接口文档
-│   ├── data-models.md         # 数据模型文档（内嵌ERD图）
+│   ├── data-models.md         # 数据模型文档（内嵌实体关系图）
 │   ├── workflows.md           # 业务流程文档（内嵌工作流图）
 │   └── dependencies.md        # 依赖关系文档（内嵌依赖图）
+└── knowledge-base/             # 分类知识库目录（预留扩展）
+    ├── core/                  # 核心概念知识
+    ├── patterns/              # 设计模式知识
+    └── best-practices/        # 最佳实践知识
 ```
+
+### knowledge.yaml 结构说明
+
+主索引文件包含以下关键信息：
+- **版本和仓库信息**: 项目基本信息和技术栈识别
+- **内容索引**: 各个文档的路径和关键信息引用
+- **质量指标**: 整体置信度、成功任务数、总任务数
+- **元数据**: 生成时间、配置参数、统计信息
 
 ## 配置选项
 
@@ -244,10 +273,11 @@ const config: AnalysisConfig = {
 - **监控日志**: 详细的执行统计和性能分析
 
 ```bash
-# 运行示例
-npx ts-node src/example.ts basic      # 基础示例
-npx ts-node src/example.ts advanced   # 高级配置
-npx ts-node src/example.ts monitor    # 监控示例
+# 运行CLI工具
+npm run cli generate                  # 使用开发环境CLI
+npm run cli info                     # 查看项目信息
+npm run cli validate                 # 验证知识库质量
+npm run cli clean                    # 清理知识库文件
 ```
 
 ## 开发和扩展
