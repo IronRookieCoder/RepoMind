@@ -238,7 +238,7 @@ ${fullPrompt}
       '你是一个专业的代码仓库分析专家，擅长理解复杂的代码结构和业务逻辑。请按照指定的任务清单，对代码仓库进行全面深入的分析。',
       {
         // 不设置maxTurns，使用SDK默认值，避免undefined导致的问题
-        timeout: 600000, // 10分钟超时
+        timeout: 1000 * 60 * 60 * 2, // 2小时
         retryAttempts: 2,
         enablePartialResults: true,
         fallbackToSimplerPrompt: true,

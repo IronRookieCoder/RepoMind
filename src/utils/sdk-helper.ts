@@ -119,7 +119,7 @@ export class SDKHelper {
                 : undefined,
               // 如果是超时错误，延长50%时间；否则保持原timeout
               timeout: isTimeoutError 
-                ? Math.min(mergedConfig.timeout * 1.5, 900000) // 最多15分钟
+                ? mergedConfig.timeout * 1.5 // 移除上限约束
                 : mergedConfig.timeout,
               retryAttempts: 1, // 降级时只尝试一次
               fallbackToSimplerPrompt: false, // 避免无限递归降级
