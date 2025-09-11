@@ -191,8 +191,6 @@ export class SDKHelper {
     const queryOptions: QueryOptions = {
       // 部分结果查询时也完全移除maxTurns限制
       disallowedTools: [
-        // 禁止写入工具（知识库分析期间不应修改文件）
-        'Write', 'Edit', 'MultiEdit', 'NotebookEdit',
         // 禁止联网工具（分析本地代码仓库）
         'WebFetch', 'WebSearch'
       ],
