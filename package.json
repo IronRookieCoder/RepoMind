@@ -1,0 +1,60 @@
+{
+  "name": "@repomind/core",
+  "version": "1.0.0",
+  "description": "基于Claude Code SDK的单仓库知识库AI Agent系统",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "repomind": "./dist/bin/cli.js"
+  },
+  "scripts": {
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "node -e \"const fs=require('fs');const path=require('path');function copyDir(src,dest){if(!fs.existsSync(dest))fs.mkdirSync(dest,{recursive:true});const files=fs.readdirSync(src);files.forEach(f=>{const srcPath=path.join(src,f);const destPath=path.join(dest,f);const stat=fs.statSync(srcPath);if(stat.isDirectory()){copyDir(srcPath,destPath)}else{fs.copyFileSync(srcPath,destPath)}});};copyDir('src/prompts','dist/prompts');copyDir('src/standard','dist/standard')\"",
+    "dev": "tsc --watch",
+    "start": "node dist/bin/cli.js",
+    "cli": "npx ts-node src/bin/cli.ts",
+    "example": "npx ts-node src/example.ts",
+    "prepublishOnly": "npm run build",
+    "prepare-release": "node scripts/prepare-release.js",
+    "test-cli": "node scripts/test-cli.js",
+    "test": "npm run test-cli",
+    "lint": "eslint src/**/*.ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "keywords": [
+    "claude-code",
+    "knowledge-management",
+    "repository-analysis",
+    "agent",
+    "ai",
+    "documentation",
+    "mermaid",
+    "wiki",
+    "typescript"
+  ],
+  "author": "RepoMind Team",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.110",
+    "@types/js-yaml": "^4.0.9",
+    "commander": "^11.0.0",
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
