@@ -12,6 +12,7 @@
 ---
 
 # 项目约束
+- 所有文档的更新，必须以现有代码实现为准
 - 优先使用claude code的能力，而不是通过代码匹配或者分析
 - claude code SDK的调用必须始终基于官方文档：https://docs.anthropic.com/zh-CN/docs/claude-code/sdk/sdk-typescript
 - 使用typescript

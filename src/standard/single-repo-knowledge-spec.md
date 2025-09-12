@@ -16,19 +16,11 @@
 │   ├── analysis-config.yaml   # 分析配置记录
 │   ├── generation-log.yaml    # 生成过程日志
 │   └── repo-relationships.yaml # 多仓库关联关系（新增）
-├── docs/                       # 维基式文档目录
-│   ├── overview.md            # 项目概览文档
-│   ├── architecture.md        # 系统架构文档（内嵌架构图表）
-│   ├── components.md          # 组件设计文档（内嵌组件关系图表）
-│   ├── apis.md                # API接口文档
-│   ├── data-models.md         # 数据模型文档（内嵌数据流图表）
-│   ├── workflows.md           # 业务流程文档（内嵌工作流图表）
-│   └── dependencies.md        # 依赖关系文档（内嵌依赖关系图表）
-└── knowledge-base/             # 分类知识库目录
-    ├── core/                  # 核心概念知识
-    ├── patterns/              # 设计模式知识
-    ├── best-practices/        # 最佳实践知识
-    └── troubleshooting/       # 故障排除知识
+└── docs/                       # 维基式文档目录
+    ├── overview.md            # 项目概览文档
+    ├── system-architecture.md # 系统架构与组件设计文档（内嵌架构图表）
+    ├── api-reference.md       # API接口与数据模型文档
+    └── business-workflows.md  # 业务流程文档（内嵌工作流图表）
 ```
 
 ### 2.2 核心文件说明
@@ -37,73 +29,43 @@
 这是知识库的核心索引文件，包含以下结构：
 
 ```yaml
+# 基于TaskListManager.generateKnowledgeIndex实际实现的简化结构
 version: "1.0.0"
-schema_version: "1.0"
 repository:
-  name: "project-name"
-  path: "/path/to/repo"
-  url: "https://gitlab.com/org/project"
-  language: "typescript"
-  framework: "react"
-  commit_hash: "abc123def456"
-  branch: "main"
-generated_at: "2024-09-10T10:00:00Z"
-last_updated: "2024-09-10T10:00:00Z"
-claude_code_version: "1.2.0"
-analysis_config:
-  depth: "deep"
-  include_tests: true
-  include_docs: true
-  max_turns: 3
-  batch_processing: true
-  parallel_analysis: true
-  optimization_strategy: "quality_first"
-  tools_allowed: ["Read", "Grep", "Glob", "Edit", "Write"]
-  context_compression: true
-knowledge_graph:
-  entities:
-    - id: string              # 实体唯一标识
-      name: string            # 实体名称
-      type: string            # 实体类型：class/function/interface/component
-      description: string     # 实体描述
-      file_path: string       # 所在文件路径
-      line_number: number     # 所在行号
-      complexity: number      # 复杂度评分
-      importance: number      # 重要性评分 (0-1)
-  relationships:
-    - id: string              # 关系唯一标识
-      from_entity: string     # 源实体ID
-      to_entity: string       # 目标实体ID
-      relationship_type: string # 关系类型：depends_on/implements/extends/calls
-      description: string     # 关系描述
-      strength: number        # 关系强度 (0-1)
-  concepts:
-    - id: string              # 概念唯一标识
-      name: string            # 概念名称
-      definition: string      # 概念定义
-      context: string         # 使用上下文
-      related_entities: []    # 相关实体ID列表
-      importance: number      # 重要性评分 (0-1)
-metrics:
-  complexity_score: number        # 整体复杂度评分
-  maintainability_index: number   # 可维护性指数
-  test_coverage: number          # 测试覆盖率
-  documentation_coverage: number # 文档覆盖率
-  lines_of_code: number         # 代码行数
-  files_analyzed: number        # 分析文件数量
-content_index:
+  name: string          # path.basename(config.repoPath)
+  path: string          # config.repoPath
+  language: string      # 默认 "unknown"，需要后续增强
+  analysisDepth: string # config.depth
+  includeTests: boolean # config.includeTests
+generatedAt: string    # 格式化时间戳
+analysisConfig:        # 完整的AnalysisConfig对象
+  repoPath: string
+  outputPath: string
+  depth: string
+  includeTests: boolean
+  includeDocs: boolean
+  # 其他配置字段...
+contentIndex:
   overview: "./docs/overview.md"
-  architecture: "./docs/architecture.md"
-  components: "./docs/components.md"
-  apis: "./docs/apis.md"
-  data_models: "./docs/data-models.md"
-  workflows: "./docs/workflows.md"
-  dependencies: "./docs/dependencies.md"
-validation:
-  schema_valid: true
-  content_complete: true
-  cross_references_valid: true
-  last_validation: "2024-09-10T10:00:00Z"
+  systemArchitecture: "./docs/system-architecture.md"
+  apiReference: "./docs/api-reference.md"
+  businessWorkflows: "./docs/business-workflows.md"
+metadata:               # 来自KnowledgeGenerationResult.metadata
+  totalTasks: number
+  successfulTasks: number
+  averageExecutionTime: number
+  timestamp: string
+qualityMetrics:
+  overallConfidence: number    # 平均置信度
+  successfulTasks: number
+  totalTasks: number
+
+# 注意：当前实现缺少以下扩展结构，可在后续版本中补充
+# schema_version: "1.0"
+# claude_code_version: string
+# knowledge_graph: { entities: [], relationships: [], concepts: [] }
+# metrics: { complexity_score, maintainability_index, etc. }
+# validation: { schema_valid, content_complete, etc. }
 ```
 
 ## 3. 文档生成规范
@@ -142,18 +104,18 @@ validation:
 [如何快速理解和上手项目]
 ```
 
-### 3.2 系统架构文档 (architecture.md)
+### 3.2 系统架构与组件设计文档 (system-architecture.md)
 
 **生成要求:**
 - 系统整体架构模式识别
 - 分层架构详细描述
-- 核心组件职责划分
-- 组件间交互关系
+- 核心组件职责划分和设计
+- 组件间交互关系和依赖关系
 - 架构决策记录
 
 **结构模板:**
 ```markdown
-# 系统架构
+# 系统架构与组件设计
 
 ## 架构模式
 [识别的架构模式：MVC、Clean Architecture、微服务等]
@@ -162,10 +124,21 @@ validation:
 [详细的分层结构描述]
 
 ## 核心组件
-[各组件的职责和边界]
+### 组件A
+- **职责**: [组件职责描述]
+- **接口**: [对外接口说明]
+- **依赖**: [依赖的其他组件]
 
-## 交互关系
-[组件间如何协作]
+### 组件B
+[类似结构]
+
+## 组件关系图
+```mermaid
+graph TD
+    A[组件A] --> B[组件B]
+    B --> C[组件C]
+    A --> D[组件D]
+```
 
 ## 架构图
 ```mermaid
@@ -191,7 +164,6 @@ graph TB
     Logic --> Repository
     Repository --> DB
 ```
-[架构图详细说明和各层职责描述]
 
 ## 设计原则
 [遵循的设计原则]
@@ -200,66 +172,33 @@ graph TB
 [重要的架构决策和原因]
 ```
 
-### 3.3 组件设计文档 (components.md)
-
-**生成要求:**
-- 自动识别项目中的关键组件
-- 每个组件的职责、接口和实现概览
-- 组件间的依赖关系
-- 组件的生命周期管理
-- 内嵌组件关系图表
-
-**结构模板:**
-```markdown
-# 组件设计
-
-## 组件概览
-[项目中核心组件的整体说明]
-
-## 组件列表
-### 组件A
-- **职责**: [组件职责描述]
-- **接口**: [对外接口说明]
-- **依赖**: [依赖的其他组件]
-
-### 组件B
-[类似结构]
-
-## 组件关系图
-```mermaid
-graph TD
-    A[组件A] --> B[组件B]
-    B --> C[组件C]
-    A --> D[组件D]
-```
-[组件关系详细说明]
-```
-
-### 3.4 API接口文档 (apis.md)
+### 3.3 API接口与数据模型文档 (api-reference.md)
 
 **生成要求:**
 - 自动发现和提取API接口定义
 - REST API、GraphQL、WebSocket等不同类型API的统一描述
-- 接口分组和版本管理
-- 请求响应示例
-
-### 3.5 数据模型文档 (data-models.md)
-
-**生成要求:**
-- 核心数据实体识别
+- 核心数据实体识别和建模
 - 实体关系图（ERD）
-- 数据流向分析
-- 数据持久化策略
-- 内嵌数据流图表
+- 接口分组和版本管理
+- 请求响应示例和数据流向分析
 
 **结构模板:**
 ```markdown
-# 数据模型
+# API接口与数据模型
 
-## 核心实体
-[数据实体概览说明]
+## API接口概览
+[项目API接口的整体说明]
 
-### 实体A
+## REST API接口
+### 接口分组A
+- **接口**: [接口路径和方法]
+- **描述**: [接口功能描述]
+- **请求**: [请求参数说明]
+- **响应**: [响应数据格式]
+
+## 数据模型
+### 核心实体
+#### 实体A
 - **属性**: [实体属性列表]
 - **关系**: [与其他实体的关系]
 - **约束**: [数据约束条件]
@@ -271,7 +210,6 @@ erDiagram
     Order ||--|{ LineItem : contains
     Customer ||--o{ Order : places
 ```
-[实体关系详细说明]
 
 ## 数据流图
 ```mermaid
@@ -283,7 +221,7 @@ flowchart LR
 [数据流向分析和说明]
 ```
 
-### 3.6 业务流程文档 (workflows.md)
+### 3.4 业务流程文档 (business-workflows.md)
 
 **生成要求:**
 - 关键业务流程识别
@@ -322,37 +260,52 @@ flowchart TD
 [异常情况和处理方式]
 ```
 
-### 3.7 依赖关系文档 (dependencies.md)
+## 4. 实际分析任务配置
 
-**生成要求:**
-- 模块依赖关系分析
-- 外部依赖说明
-- 循环依赖检测
-- 内嵌依赖关系图表
+### 4.1 TaskListManager中的分析任务
 
-**结构模板:**
-```markdown
-# 依赖关系
+基于代码实现，系统实际执行以下4个核心分析任务：
 
-## 依赖概览
-[项目依赖整体说明]
-
-## 内部依赖
-[模块间依赖关系]
-
-## 外部依赖
-[第三方库和服务依赖]
-
-## 依赖关系图
-```mermaid
-graph TD
-    A[模块A] --> B[模块B]
-    A --> C[模块C]
-    B --> D[外部依赖D]
-    C --> D
+```typescript
+const ANALYSIS_TASKS: AnalysisTask[] = [
+  {
+    id: 'overview',
+    name: '项目概览',
+    outputFile: 'docs/overview.md',
+    priority: 1,
+    description: '分析项目整体特征，提供快速理解项目的概览信息'
+  },
+  {
+    id: 'systemArchitecture',
+    name: '系统架构与组件设计',
+    outputFile: 'docs/system-architecture.md',
+    priority: 2,
+    description: '分析项目的整体架构设计、核心模式及组件结构'
+  },
+  {
+    id: 'apiReference',
+    name: 'API接口与数据模型',
+    outputFile: 'docs/api-reference.md',
+    priority: 3,
+    description: '分析项目的API设计、接口规范及数据结构模型'
+  },
+  {
+    id: 'businessWorkflows',
+    name: '业务流程',
+    outputFile: 'docs/business-workflows.md',
+    priority: 4,
+    description: '分析项目的核心业务流程和处理逻辑'
+  }
+];
 ```
-[依赖关系详细说明和影响分析]
-```
+
+### 4.2 分析任务执行流程
+
+1. **统一prompt构建**: 将所有任务合并为单个prompt
+2. **单次SDK调用**: 使用Claude Code SDK执行完整分析
+3. **实时任务检测**: 监控输出并实时写入已完成任务
+4. **兜底机制**: 处理未实时写入的任务
+5. **质量验证**: 计算置信度和完整性检查
 
 ## 4. 可视化图表规范
 

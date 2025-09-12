@@ -22,74 +22,98 @@ graph TD
 
 ### 仓库与文档关系定义
 
-**文档结构模板**：
-- `README.md`: 项目概述和快速开始
-- `ARCHITECTURE.md`: 架构分析和组件说明  
-- `COMPONENTS.md`: 组件详细说明和依赖关系
-- `API.md`: 接口和使用指南
-- `WORKFLOWS.md`: 业务流程和数据流
+**文档结构模板**（基于TaskListManager实际实现）：
+- `overview.md`: 项目概览文档 - 分析项目整体特征，提供快速理解项目的概览信息
+- `system-architecture.md`: 系统架构与组件设计文档 - 分析项目的整体架构设计、核心模式及组件结构
+- `api-reference.md`: API接口与数据模型文档 - 分析项目的API设计、接口规范及数据结构模型
+- `business-workflows.md`: 业务流程文档 - 分析项目的核心业务流程和处理逻辑
 
-**索引关系模型**：
+**知识库YAML结构（基于TaskListManager实际实现）**：
+```yaml
+# 单仓库知识库主入口文件：.repomind/knowledge.yaml
+# 基于TaskListManager.generateKnowledgeIndex的实际实现
+version: "1.0.0"
+repository:
+  name: string          # path.basename(config.repoPath)
+  path: string          # config.repoPath
+  language: string      # 默认 "unknown"
+  analysisDepth: string # config.depth
+  includeTests: boolean # config.includeTests
+generatedAt: string    # 格式化时间戳
+analysisConfig:        # 完整的AnalysisConfig对象
+  repoPath: string
+  outputPath: string
+  depth: string
+  includeTests: boolean
+  includeDocs: boolean
+contentIndex:
+  overview: "./docs/overview.md"
+  systemArchitecture: "./docs/system-architecture.md"
+  apiReference: "./docs/api-reference.md"
+  businessWorkflows: "./docs/business-workflows.md"
+metadata:               # 来自KnowledgeGenerationResult.metadata
+  totalTasks: number
+  successfulTasks: number
+  averageExecutionTime: number
+  timestamp: string
+qualityMetrics:
+  overallConfidence: number    # 平均置信度
+  successfulTasks: number
+  totalTasks: number
+```
+
+**TypeScript接口定义（对应实际KnowledgeIndex实现）**：
 ```typescript
-// 文档引用类型定义
-interface DocumentRef {
-  filePath: string;
-  title: string;
-  summary: string;
-  lastUpdated: string;
-}
-
-interface ComponentRef {
-  name: string;
-  type: string;
-  filePath: string;
-  dependencies: string[];
-  description: string;
-}
-
-interface ApiRef {
-  name: string;
-  method: string;
-  endpoint: string;
-  filePath: string;
-  description: string;
-}
-
-interface WorkflowRef {
-  name: string;
-  steps: string[];
-  filePaths: string[];
-  description: string;
-}
-
-// 单仓库索引主结构
-interface SingleRepoIndex {
-  repoId: string;
-  repoUrl: string;
-  branch: string;
-  knowledgeBase: {
-    overview: DocumentRef;
-    architecture: DocumentRef;
-    components: ComponentRef[];
-    apis: ApiRef[];
-    workflows: WorkflowRef[];
+// 基于TaskListManager.generateKnowledgeIndex的实际接口定义
+interface KnowledgeIndex {
+  version: string;
+  repository: {
+    name: string;           // path.basename(config.repoPath)
+    path: string;           // config.repoPath
+    language: string;       // 默认 "unknown"
+    analysisDepth: string;  // config.depth
+    includeTests: boolean;  // config.includeTests
+  };
+  generatedAt: string;      // 格式化时间戳
+  analysisConfig: AnalysisConfig;  // 完整配置对象
+  contentIndex: {
+    overview: string;           // "./docs/overview.md"
+    systemArchitecture: string; // "./docs/system-architecture.md"
+    apiReference: string;       // "./docs/api-reference.md"
+    businessWorkflows: string;  // "./docs/business-workflows.md"
   };
   metadata: {
-    lastUpdated: string;
-    version: string;
-    dependencies: string[];
-    language: string;
-    framework: string[];
+    totalTasks: number;
+    successfulTasks: number;
+    averageExecutionTime: number;
+    timestamp: string;
   };
+  qualityMetrics: {
+    overallConfidence: number;  // 平均置信度
+    successfulTasks: number;
+    totalTasks: number;
+  };
+}
+
+// 分析配置接口
+interface AnalysisConfig {
+  repoPath: string;
+  outputPath: string;
+  depth: string;
+  includeTests: boolean;
+  includeDocs: boolean;
+  // 其他配置字段...
 }
 ```
 
-### 知识提取流程
+### 知识提取流程（基于TaskListManager实际实现）
 
-1. **代码结构分析**: 使用Claude Code SDK分析项目架构
-2. **文档生成**: 基于分析结果生成结构化文档
-3. **关系图谱**: 构建组件依赖关系图
-4. **索引构建**: 创建可搜索的文档索引
+1. **统一prompt构建**: 将所有分析任务合并为单个comprehensive prompt
+2. **单次SDK调用**: 使用Claude Code SDK执行完整分析（2小时超时）
+3. **实时任务检测**: 监控输出流，检测任务完成标记并实时写入文档
+4. **兜底机制**: 处理未实时写入的任务，使用多种解析策略
+5. **质量验证**: 计算置信度、完整性检查和结果打包
+6. **知识库更新**: 生成knowledge.yaml主索引文件
 
 ## 多仓库关联索引
 
@@ -102,36 +126,167 @@ interface SingleRepoIndex {
 - `domain`: 业务域关联
 - `team`: 团队维护关系
 
-**关系配置模型**：
+**多仓库关系YAML结构（基于repo-relationships.yaml规范）**：
+```yaml
+# 多仓库关系配置文件：.repomind/meta/repo-relationships.yaml
+version: "1.0"
+schema_version: "1.0"
+
+current_repository:
+  name: string
+  url: string
+  type: string  # primary/secondary/utility
+  domain: string
+
+related_repositories:
+  dependencies:
+    - name: string
+      url: string
+      relationship_type: string
+      dependency_level: string  # critical/important/optional
+      version_constraint: string
+      description: string
+      interface_points: []
+      confidence: number
+      last_verified: string
+  
+  dependents:
+    - name: string
+      url: string
+      relationship_type: string
+      dependency_level: string
+      description: string
+      interface_points: []
+      confidence: number
+      
+  collaborators:
+    - name: string
+      url: string
+      relationship_type: string
+      collaboration_pattern: string  # event_driven/sync_api/async_queue
+      description: string
+      interface_points: []
+      confidence: number
+
+architecture_mapping:
+  service_mesh:
+    role: string  # core_service/edge_service/utility_service
+    cluster: string
+    namespace: string
+  data_flow:
+    upstream_services: []
+    downstream_services: []
+    data_stores: []
+  deployment_topology:
+    environment: string
+    scaling_group: string
+    load_balancer: string
+
+shared_resources:
+  databases:
+    - name: string
+      type: string
+      shared_with: []
+      access_pattern: string
+  message_queues:
+    - name: string
+      type: string
+      shared_with: []
+      access_pattern: string
+  configuration:
+    - name: string
+      type: string
+      shared_with: []
+      access_pattern: string
+
+update_strategy:
+  sync_frequency: string  # real_time/hourly/daily/weekly
+  auto_discovery: boolean
+  manual_verification: boolean
+  confidence_threshold: number
+
+metadata:
+  created_at: string
+  updated_at: string
+  created_by: string
+  validation_status: string
+  total_relationships: number
+  high_confidence_relationships: number
+```
+
+**TypeScript接口定义（与repo-relationships.yaml对应）**：
 ```typescript
-// 关系类型枚举
-type RelationType = 'dependency' | 'service' | 'shared' | 'domain' | 'team';
-
-// 查询类型枚举  
-type QueryType = 'architecture' | 'api' | 'component' | 'workflow' | 'dependency';
-
-// 多仓库关系配置
-interface MultiRepoRelation {
-  centralRepoId: string;
-  relations: {
-    repoId: string;
-    relationType: RelationType;
-    targetRepos: string[];
-    weight: number; // 0-1 之间的权重值
-    description: string;
-    bidirectional: boolean; // 是否双向关系
-  }[];
-  routingRules: {
-    queryType: QueryType;
-    targetRepos: string[];
-    priority: number; // 1-10 优先级
-    conditions?: string[]; // 路由条件
-  }[];
-  metadata: {
-    lastUpdated: string;
-    version: string;
-    maintainer: string;
+// 多仓库关系接口定义，完全对应repo-relationships.yaml结构
+interface RepoRelationships {
+  version: string;
+  schema_version: string;
+  current_repository: {
+    name: string;
+    url: string;
+    type: 'primary' | 'secondary' | 'utility';
+    domain: string;
   };
+  related_repositories: {
+    dependencies: RepoRelation[];
+    dependents: RepoRelation[];
+    collaborators: RepoRelation[];
+  };
+  architecture_mapping: {
+    service_mesh: {
+      role: 'core_service' | 'edge_service' | 'utility_service';
+      cluster: string;
+      namespace: string;
+    };
+    data_flow: {
+      upstream_services: string[];
+      downstream_services: string[];
+      data_stores: string[];
+    };
+    deployment_topology: {
+      environment: string;
+      scaling_group: string;
+      load_balancer: string;
+    };
+  };
+  shared_resources: {
+    databases: SharedResource[];
+    message_queues: SharedResource[];
+    configuration: SharedResource[];
+  };
+  update_strategy: {
+    sync_frequency: 'real_time' | 'hourly' | 'daily' | 'weekly';
+    auto_discovery: boolean;
+    manual_verification: boolean;
+    confidence_threshold: number;
+  };
+  metadata: {
+    created_at: string;
+    updated_at: string;
+    created_by: string;
+    validation_status: string;
+    total_relationships: number;
+    high_confidence_relationships: number;
+  };
+}
+
+interface RepoRelation {
+  name: string;
+  url: string;
+  relationship_type: string;
+  dependency_level?: 'critical' | 'important' | 'optional';
+  version_constraint?: string;
+  collaboration_pattern?: 'event_driven' | 'sync_api' | 'async_queue';
+  description: string;
+  interface_points: string[];
+  confidence: number;
+  last_verified?: string;
+}
+
+interface SharedResource {
+  name: string;
+  type: string;
+  shared_with: string[];
+  access_pattern: string;
 }
 ```
 
@@ -158,60 +313,137 @@ interface MultiRepoRelation {
 - `trace-service-calls`: 追踪服务调用链
 - `get-domain-overview`: 获取业务域概览
 
-### MCP服务器架构
+### MCP服务器架构（基于统一YAML结构）
 
 ```typescript
-// MCP工具参数和返回类型定义
+// MCP工具参数和返回类型定义（对应knowledge.yaml结构）
 interface SearchResult {
   repoId: string;
   filePath: string;
   content: string;
   relevance: number;
-  type: 'overview' | 'architecture' | 'component' | 'api' | 'workflow';
+  type: 'overview' | 'system_architecture' | 'api_reference' | 'business_workflows';
+  entity?: EntityRef;  // 如果匹配到实体
+  concept?: ConceptRef;  // 如果匹配到概念
 }
 
-interface Architecture {
+interface KnowledgeBaseResult {
   repoId: string;
-  overview: string;
-  layers: string[];
-  components: ComponentRef[];
-  dependencies: string[];
-  diagrams?: string[]; // mermaid图表
+  knowledgeBase: KnowledgeBase;  // 完整的knowledge.yaml结构
+  contentIndex: {
+    overview: string;
+    systemArchitecture: string;
+    apiReference: string;
+    businessWorkflows: string;
+  };
 }
 
 interface CrossRepoResult {
   results: SearchResult[];
-  relations: string[];
+  repoRelationships: RepoRelationships[];  // 对应repo-relationships.yaml
   aggregatedScore: number;
   queryAnalysis: {
     intent: string;
     targetTypes: string[];
     scope: string[];
+    matchedEntities: EntityRef[];
+    matchedConcepts: ConceptRef[];
   };
 }
 
-// MCP服务器接口定义
+// MCP服务器接口定义（与YAML结构完全对应）
 interface MCPServer {
   // 单仓库工具
   singleRepoTools: {
-    searchKnowledge(params: {repoId: string, query: string, type?: string}): Promise<SearchResult[]>;
-    getArchitecture(params: {repoId: string}): Promise<Architecture>;
-    findComponent(params: {repoId: string, componentName: string}): Promise<ComponentRef | null>;
-    getApiDocs(params: {repoId: string, apiName?: string}): Promise<ApiRef[]>;
+    // 搜索知识库（基于knowledge.yaml的知识图谱）
+    searchKnowledge(params: {
+      repoId: string, 
+      query: string, 
+      type?: 'entity' | 'concept' | 'document' | 'all'
+    }): Promise<SearchResult[]>;
+    
+    // 获取完整知识库结构
+    getKnowledgeBase(params: {repoId: string}): Promise<KnowledgeBaseResult>;
+    
+    // 查找实体（基于knowledge_graph.entities）
+    findEntity(params: {
+      repoId: string, 
+      entityName: string, 
+      entityType?: string
+    }): Promise<EntityRef | null>;
+    
+    // 查找概念（基于knowledge_graph.concepts）
+    findConcept(params: {
+      repoId: string, 
+      conceptName: string
+    }): Promise<ConceptRef | null>;
+    
+    // 获取关系图（基于knowledge_graph.relationships）
+    getRelationships(params: {
+      repoId: string, 
+      entityId?: string, 
+      relationshipType?: string
+    }): Promise<RelationshipRef[]>;
+    
+    // 获取文档内容（基于content_index）
+    getDocument(params: {
+      repoId: string, 
+      documentType: 'overview' | 'systemArchitecture' | 'apiReference' | 'businessWorkflows'
+    }): Promise<{filePath: string, content: string}>;
   };
   
-  // 多仓库工具
+  // 多仓库工具（基于repo-relationships.yaml）
   multiRepoTools: {
-    searchAcrossRepos(params: {query: string, scope?: string[], maxResults?: number}): Promise<CrossRepoResult>;
-    findDependencies(params: {repoId: string, direction?: 'upstream' | 'downstream' | 'both'}): Promise<string[]>;
-    traceServiceCalls(params: {fromRepo: string, toRepo: string}): Promise<string[]>;
-    getDomainOverview(params: {domain: string}): Promise<{repos: string[], overview: string}>;
+    // 跨仓库搜索
+    searchAcrossRepos(params: {
+      query: string, 
+      scope?: string[], 
+      maxResults?: number,
+      includeRelationships?: boolean
+    }): Promise<CrossRepoResult>;
+    
+    // 查找仓库依赖关系
+    findDependencies(params: {
+      repoId: string, 
+      direction?: 'dependencies' | 'dependents' | 'collaborators' | 'all'
+    }): Promise<RepoRelation[]>;
+    
+    // 追踪服务调用链（基于architecture_mapping）
+    traceServiceCalls(params: {
+      fromRepo: string, 
+      toRepo: string,
+      includeSharedResources?: boolean
+    }): Promise<{
+      path: string[], 
+      sharedResources: SharedResource[],
+      architectureMapping: any
+    }>;
+    
+    // 获取业务域概览
+    getDomainOverview(params: {domain: string}): Promise<{
+      repos: RepoRelationships[], 
+      overview: string,
+      architectureMapping: any
+    }>;
+    
+    // 获取仓库关系配置
+    getRepoRelationships(params: {repoId: string}): Promise<RepoRelationships>;
   };
   
   // 工具管理
   management: {
     refreshIndex(params: {repoId?: string}): Promise<{status: string, message: string}>;
-    getStatus(): Promise<{activeRepos: number, lastUpdate: string}>;
+    getStatus(): Promise<{
+      activeRepos: number, 
+      lastUpdate: string,
+      validationStatus: {[repoId: string]: boolean}
+    }>;
+    validateKnowledgeBase(params: {repoId: string}): Promise<{
+      schema_valid: boolean,
+      content_complete: boolean,
+      cross_references_valid: boolean,
+      errors: string[]
+    }>;
   };
 }
 ```
@@ -221,8 +453,8 @@ interface MCPServer {
 ### 知识库存储
 
 **单仓库存储**：
-- 知识库文档存储在各仓库的 `docs/knowledge/` 目录
-- 索引文件存储在 `.repomind/` 目录
+- 知识库文档存储在各仓库的 `.repomind/docs/` 目录
+- 索引和元数据存储在 `.repomind/` 目录结构中
 
 **中心仓库存储**：
 - 关系配置存储在专用的中心仓库
