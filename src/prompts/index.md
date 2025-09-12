@@ -6,20 +6,18 @@
 
 ## 文档结构
 
-### 通用指导
+### 通用指导与任务模板
 - **[common-analysis-guide.md](./common-analysis-guide.md)** - 所有Agent共享的分析原则和输出要求
+- **[unified-analysis-tasks.md](./unified-analysis-tasks.md)** - 统一分析任务的执行模板
 
 ### 分析Agent列表
 
 | Agent | 文件 | 职责 |
 |-------|------|------|
-| 项目概览 | [overview-analysis.md](./overview-analysis.md) | 分析项目整体特征，提供概览信息 |
-| 系统架构 | [architecture-analysis.md](./architecture-analysis.md) | 分析架构设计，识别模式和分层 |
-| 组件设计 | [components-analysis.md](./components-analysis.md) | 分析组件实现，识别关系和模式 |
-| API接口 | [apis-analysis.md](./apis-analysis.md) | 发现和分析API接口设计 |
-| 数据模型 | [data-models-analysis.md](./data-models-analysis.md) | 分析数据结构，识别实体关系 |
-| 业务流程 | [workflows-analysis.md](./workflows-analysis.md) | 分析业务流程，识别关键流程 |
-| 依赖关系 | [dependencies-analysis.md](./dependencies-analysis.md) | 分析模块依赖，识别依赖结构 |
+| 项目概览 | [overview-analysis.md](./overview-analysis.md) | 提取项目基础信息、技术栈、目录结构和核心功能 |
+| 系统架构与组件 | [system-architecture-analysis.md](./system-architecture-analysis.md) | 识别架构模式、核心组件及其依赖关系 |
+| API接口与数据模型 | [api-reference-analysis.md](./api-reference-analysis.md) | 识别API端点、请求响应格式及数据结构定义 |
+| 业务流程 | [business-workflows-analysis.md](./business-workflows-analysis.md) | 识别业务逻辑执行路径和数据处理流程 |
 
 ## 执行方式
 
@@ -30,18 +28,15 @@
 执行后生成以下知识库结构：
 ```
 .repomind/
-├── knowledge.yaml          # 结构化知识库索引
-├── docs/                   # 维基式文档目录
-│   ├── overview.md        # 项目概览
-│   ├── architecture.md    # 系统架构
-│   ├── components.md      # 组件设计
-│   ├── apis.md            # API接口
-│   ├── data-models.md     # 数据模型
-│   ├── workflows.md       # 业务流程
-│   └── dependencies.md    # 依赖关系
-└── meta/                   # 元数据目录
-    ├── repo-info.yaml     # 仓库信息
-    └── generation-log.yaml # 生成日志
+├── knowledge.yaml              # 结构化知识库索引
+├── docs/                       # 维基式文档目录
+│   ├── overview.md            # 项目概览
+│   ├── system-architecture.md # 系统架构与组件设计
+│   ├── api-reference.md       # API接口与数据模型
+│   └── business-workflows.md  # 业务流程
+└── meta/                       # 元数据目录
+    ├── repo-info.yaml         # 仓库信息
+    └── generation-log.yaml     # 生成日志
 ```
 
 ## 设计原则

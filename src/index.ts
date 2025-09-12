@@ -12,12 +12,6 @@ export { TaskListManager } from './agents/TaskListManager';
 
 // 导出所有分析Agent
 export { BaseAnalysisAgent } from './agents/base/BaseAnalysisAgent';
-export { OverviewAnalysisAgent } from './agents/OverviewAnalysisAgent';
-export { ArchitectureAnalysisAgent } from './agents/ArchitectureAnalysisAgent';
-export { ComponentAnalysisAgent } from './agents/ComponentAnalysisAgent';
-export { ApiAnalysisAgent } from './agents/ApiAnalysisAgent';
-export { DataModelAnalysisAgent } from './agents/DataModelAnalysisAgent';
-export { WorkflowAnalysisAgent } from './agents/WorkflowAnalysisAgent';
 
 // 导出工具函数
 export * from './utils';
