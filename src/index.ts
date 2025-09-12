@@ -16,6 +16,9 @@ export { BaseAnalysisAgent } from './agents/base/BaseAnalysisAgent';
 // 导出工具函数
 export * from './utils';
 
+// 导出MCP模块
+export * from './mcp';
+
 // 默认配置
 export const DEFAULT_CONFIG = {
   analysis: {

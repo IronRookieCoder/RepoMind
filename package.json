@@ -5,7 +5,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "repomind": "./dist/bin/cli.js"
+    "repomind": "./dist/bin/cli.js",
+    "repomind-mcp-server": "./dist/bin/mcp-server.js"
   },
   "scripts": {
     "build": "tsc && npm run copy-assets",
@@ -13,6 +14,7 @@
     "dev": "tsc --watch",
     "start": "node dist/bin/cli.js",
     "cli": "npx ts-node src/bin/cli.ts",
+    "mcp-server": "npx ts-node src/bin/mcp-server.ts",
     "example": "npx ts-node src/example.ts",
     "prepublishOnly": "npm run build",
     "prepare-release": "node scripts/prepare-release.js",
@@ -36,6 +38,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-code": "^1.0.110",
+    "@modelcontextprotocol/sdk": "^1.18.0",
     "@types/js-yaml": "^4.0.9",
     "commander": "^11.0.0",
     "js-yaml": "^4.1.0"
