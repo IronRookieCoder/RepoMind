@@ -19,6 +19,13 @@
 
 ## 输出文档格式
 
+**🚨 重要：必须严格按照以下格式输出**
+```
+=== TASK_START: systemArchitecture ===
+# 系统架构与组件设计文档内容
+=== TASK_END: systemArchitecture ===
+```
+
 参考以下格式生成 `system-architecture.md`：
 
 ### 第一部分：系统架构
