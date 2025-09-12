@@ -15,6 +15,13 @@
 - **Markdown格式**：标准化的Markdown文档格式
 - **Mermaid图表**：可视化内容使用Mermaid语法
 - **准确性**：确保分析结果与代码实现完全一致
+- **🎯 重要格式要求**：每个任务的输出必须严格按照以下格式包围：
+  ```
+  === TASK_START: 任务ID ===
+  完整的Markdown文档内容
+  === TASK_END: 任务ID ===
+  ```
+  其中任务ID为具体的任务标识符（如：overview、systemArchitecture、apiReference、businessWorkflows）
 
 ### 3. 质量标准
 - **完整性**：覆盖分析维度的核心内容

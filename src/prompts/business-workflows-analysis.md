@@ -12,6 +12,13 @@
 
 ## 输出文档格式
 
+**🚨 重要：必须严格按照以下格式输出**
+```
+=== TASK_START: businessWorkflows ===
+# 业务流程文档内容
+=== TASK_END: businessWorkflows ===
+```
+
 参考以下格式生成 `business-workflows.md`：
 
 - **业务流程概览**：核心流程统计和分类

@@ -20,6 +20,13 @@
 
 ## 输出文档格式
 
+**🚨 重要：必须严格按照以下格式输出**
+```
+=== TASK_START: apiReference ===
+# API接口与数据模型文档内容
+=== TASK_END: apiReference ===
+```
+
 参考以下格式生成 `api-reference.md`：
 
 ### 第一部分：API接口参考
